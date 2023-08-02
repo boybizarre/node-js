@@ -2,6 +2,10 @@ const fs = require('fs');
 const http = require('http');
 const url = require('url');
 
+const slugify = require('slugify');
+
+const replaceTemplate = require('./modules/replaceTemplate');
+
 ////////////////////////////////
 
 // Blocking, synchronous way
@@ -32,21 +36,6 @@ const url = require('url');
 
 ///////////////////////////////////
 
-const replaceTemplate = (temp, product) => {
-  let output = temp.replace(/{%PRODUCTNAME%}/g, product.productName);
-  output = temp.replace(/{%IMAGE%}/g, product.image);
-  output = temp.replace(/{%PRICE%}/g, product.price);
-  output = temp.replace(/{%FROM%}/g, product.from);
-  output = temp.replace(/{%NUTRIENTS%}/g, product.nutrients);
-  output = temp.replace(/{%QUANTITY%}/g, product.quantity);
-  output = temp.replace(/{%DESCRIPTION%}/g, product.description);
-  output = temp.replace(/{%ID%}/g, product.id);
-
-  if (!product.organic)
-    output = output.replace(/{%NOT_ORGANIC%}/g, 'not-organic');
-  return output;
-};
-
 const templateOverview = fs.readFileSync(
   `${__dirname}/templates/template-overview.html`,
   'utf-8'
@@ -63,28 +52,32 @@ const templateProduct = fs.readFileSync(
 const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, 'utf-8');
 const dataObj = JSON.parse(data);
 
+const slugs = dataObj.map((el) => slugify(el.productName, { lower: true }));
+console.log(slugs);
+
+// console.log(slugify('Fresh Avocados', { lower: true }));
+
 // Server
 const server = http.createServer((req, res) => {
   // console.log(req.url);
-  // console.log(url.parse(req.url, true));
+  console.log(url.parse(req.url, true));
   // const pathName = req.url;
-
 
   const { query, pathname } = url.parse(req.url, true);
   console.log(req.url);
-  
+
   // overview page
   if (pathname === '/' || pathname === '/overview') {
     res.writeHead(200, { 'Content-type': 'text/html' });
-    
+
     const cardsHtml = dataObj
-    .map((el) => replaceTemplate(templateCard, el))
-    .join('');
-    
+      .map((el) => replaceTemplate(templateCard, el))
+      .join('');
+
     const output = templateOverview.replace('{%PRODUCT_CARDS%}', cardsHtml);
-    
+
     res.end(output);
-    
+
     // product page
   } else if (pathname === '/product') {
     const product = dataObj[query.id];
